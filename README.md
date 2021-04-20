@@ -5,7 +5,7 @@
 2. นายพันธุ์ธิชชัย ขรรค์บริวาร 
 
 ## Sequential Dijkstra Algorithm
-![image](https://user-images.githubusercontent.com/48822642/115367429-64c83f00-a1f0-11eb-9755-cfdd421b3865.png)
+![image](https://user-images.githubusercontent.com/48822642/115368953-cd63eb80-a1f1-11eb-8211-f9056198368f.png)
 
 ## Parallel Dijkstra Algorithm
 ![image](https://user-images.githubusercontent.com/48822642/115367545-80cbe080-a1f0-11eb-88a0-5f82e870029c.png)
