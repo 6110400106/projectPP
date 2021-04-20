@@ -65,25 +65,26 @@ int main() {
     clock_t t;
 
     int V = 6;                 // number of vertices, edge, and weight of each edge
-    int graph[6][6] = { {0, 3, 60, 3, 16, 17},
-                        {3, 0, 88, 88, 86, 26},
-                        {60, 88, 0, 11, 59, 11},
-                        {3, 88, 11, 0, 22, 51},
-                        {16, 86, 59, 22, 0, 45},
-                        {17, 26, 11, 51, 45, 0} };
+    int graph[6][6] = { {0, 3, 50, 47, 47, 79},
+                        {3, 0, 2, 50, 79, 52},
+                        {50, 2, 0, 93, 27, 90},
+                        {47, 50, 93, 0, 89, 41},
+                        {47, 79, 27, 89, 0, 1},
+                        {79, 52, 90, 41, 1, 0} };
+
+    //for printing graph
+    printf("\n");
+    for(int i = 0; i < V; i++) {
+       for(int j = 0; j < V; j++) 
+           printf("%d ", graph[i][j]);
+       printf("\n");
+    }
 
     int start, end;
     t = clock();
     dijkstraAlgo(V, graph, 0);
 
 
-    // for printing graph
-    //printf("\n");
-    //for(int i = 0; i < V; i++) {
-    //    for(int j = 0; j < V; j++) 
-    //        printf("%d ", graph[i][j]);
-    //    printf("\n");
-    //}
 
     t = clock() - t;
     printf ("\nIt took me %d clicks (%f seconds).\n",t,((float)t)/CLOCKS_PER_SEC);
