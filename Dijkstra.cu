@@ -38,6 +38,15 @@ void printGraph(float *arr, int size) {
     }
     printf("\n");
 }
+int checkNumberOfVertices(int N) {
+    // maximum number of block on gtx1050ti is 374
+    if(N < 374) {
+        return N;
+    }else {
+        N = N%374 ? (N/374)+1 : N/374;
+        return N;
+    }
+}
 __global__ void dijkstraAlgo(float *graph, float *result, bool* visited, int V) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     visited[index] = false;
@@ -74,7 +83,7 @@ int main() {
     float* result = (float *) malloc((NV*NV) * sizeof(float));
 
     createGraph(graph, (NV*NV));                    // Generate the graph & store in array
-    printGraph(graph, (NV*NV));                     // Print the array
+    // printGraph(graph, (NV*NV));                     // Print the array
     
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -89,7 +98,8 @@ int main() {
 
     cudaMemcpy(d_graph, graph, ((NV*NV) * sizeof(float)), cudaMemcpyHostToDevice);
     cudaEventRecord(start);
-    dijkstraAlgo<<<NV, 1>>>(d_graph,d_result, d_visited, NV);
+    int blocks = checkNumberOfVertices(NV);
+    dijkstraAlgo<<<blocks, 1024>>>(d_graph,d_result, d_visited, NV);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float milliseconds = 0;
@@ -97,7 +107,7 @@ int main() {
 
     cudaMemcpy(result, d_result, ((NV*NV) * sizeof(float)), cudaMemcpyDeviceToHost);
     
-    printGraph(result, (NV*NV));
+    // printGraph(result, (NV*NV));
     
     cudaFree(d_graph);
     cudaFree(d_result);
