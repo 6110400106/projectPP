@@ -1,87 +1,111 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <limits.h>
+#define NV 6                                // number of vertices
 
-#define V 6
+void createGraph(float *arr, int N) {
 
-// __host__ __device__ void printPath(int *parent, int j) { 
-//     // Base Case : If j is source 
-//     if (parent[j] == - 1) 
-//         return; 
-  
-//     printPath(parent, parent[j]); 
-  
-//     printf("%d ", j); 
-// } 
+    time_t t;                               // used for randomizing values
+    int col; 
+    int row;
+    int maxWeight = 100;                    // limit the weight an edge can have
 
-__global__ void dijkstraAlgo(int graph[V][V]) {
-    int src = 0;
-    int dist[V];
-    bool sSet[V];
-    int parent[V];
+    srand((unsigned) time(&t));             // generate random
 
-    // parent[0] = -1;
-    // for(int i = 0; i < V; i++) {
-    //     dist[i] = INT_MAX; 
-    //     sSet[i] = false; 
-    // }
-    // dist[src] = 0;
+    for (col = 0; col < sqrt(N); col++) { 
+	for(row = 0; row < sqrt(N); row++) {
+            if( col != row){
+                arr[(int)(row*sqrt(N)) + col] = rand() % maxWeight; // assign random
 
-    // int min = INT_MAX, min_index; 
-    // for(int i = 0; i < V-1; i++) {
-    //     // find min index
-    //     for (int v = 0; v < V; v++) 
-    //         if (sSet[v] == false && dist[v] <= min) 
-    //             min = dist[v], min_index = v; 
-    //     int u = min_index;
-
-    //     sSet[u] = true;
-
-    //     for(int j = 0; j < V; j++) {
-    //         if(!sSet[j] && graph[i][j] && dist[i] + graph[i][j] < dist[j]) {
-    //             parent[j] = i; 
-    //             dist[j] = dist[i] + graph[i][j]; 
-    //         }
-    //     }
-    // }
-
-    // printf("Vertex\t Distance\tPath"); 
-    // for (int i = 1; i < V; i++) { 
-    //     printf("\n%d -> %d \t\t %d\t%d ", src, i, dist[i], src); 
-    //     printPath(parent, i); 
-    // }
+                // have a symmetric graph
+                arr[(int)(col*sqrt(N)) + row] = arr[(int)(row*sqrt(N)) + col];
+            }
+            else
+                arr[(int)(row*sqrt(N)) + col] = 0; // NO LOOPS
+        }
+    }
 }
-
+void printGraph(float *arr, int size) {
+    int index;
+    printf("\nGraph:\n");
+    for(index = 0; index < size; index++) {
+        if(((index + 1) % (int)sqrt(size)) == 0) {
+            printf("%5.1f\n", arr[index]);
+        }
+        else {
+            printf("%5.1f ", arr[index]);
+        }
+    }
+    printf("\n");
+}
+__global__ void dijkstraAlgo(float *graph, float *result, bool* visited, int V) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    visited[index] = false;
+    
+    if(index == ((blockDim.x * blockIdx.x) + blockIdx.x))
+        result[index] = 0;                                  // distance to itself is always 0
+    else
+        result[index] = INT_MAX;
+    for (int count = 0; count < V-1; count++) {
+        // Pick the minimum distance vertex from the set of vertices not
+        // yet processed.
+        int min = INT_MAX, u;
+        for (int v = 0; v < V; v++)
+            if (visited[(V * blockIdx.x) + v] == false && result[(V *blockIdx.x) +  v] <= min)
+                min = result[(V * blockIdx.x) + v], u = v;
+    
+        // Mark the picked vertex as processed
+        visited[(V * blockIdx.x) + u] = true;
+    
+        // Update the wieght value 
+        for (int v = 0; v < V; v++) {
+    
+            // Update only if is not in visited, there is an edge from 
+            // u to v, and total weight of path from src to  v through u is 
+            // smaller than current value
+            if (!visited[(V * blockIdx.x) + v] && graph[(u*V) + v] && result[(V * blockIdx.x) + u] != INT_MAX
+                && result[(V * blockIdx.x) + u] + graph[(u*V) + v] < result[(V * blockIdx.x) + v])
+                result[(V * blockIdx.x) + v] = result[(V*blockIdx.x) + u] + graph[(u*V) + v];
+        }
+    }
+}
 int main() {
-    int graph[V][V] = { {0, 4, 4, 0, 0, 0},
-                        {4, 0, 2, 0, 0, 0},
-                        {4, 2, 0, 3, 1, 6},
-                        {0, 0, 3, 0, 0, 2},
-                        {0, 0, 1, 0, 0, 3},
-                        {0, 0, 6, 2, 3, 0} };
-	int h_out[V][V];
+    float* graph = (float *) malloc((NV*NV) * sizeof(float));
+    float* result = (float *) malloc((NV*NV) * sizeof(float));
+
+    createGraph(graph, (NV*NV));                    // Generate the graph & store in array
+    printGraph(graph, (NV*NV));                     // Print the array
     
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    int *d_in;
-    cudaMalloc((void**) &d_in, V*sizeof(int));
-	cudaMemcpy(d_in, &graph, V*sizeof(int), cudaMemcpyHostToDevice);
+    float *d_graph, *d_result;
+    bool *d_visited;
 
+    cudaMalloc((void **) &d_graph, ((NV*NV) * sizeof(float)));
+    cudaMalloc((void **) &d_result, ((NV*NV) * sizeof(float)));
+    cudaMalloc((void **) &d_visited, ((NV*NV) * sizeof(bool)));
+
+    cudaMemcpy(d_graph, graph, ((NV*NV) * sizeof(float)), cudaMemcpyHostToDevice);
     cudaEventRecord(start);
-    dijkstraAlgo<<<1, V>>>(graph);
+    dijkstraAlgo<<<NV, 1>>>(d_graph,d_result, d_visited, NV);
     cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
 
-    cudaMemcpy(&h_out, d_in, V*sizeof(int), cudaMemcpyDeviceToHost);
-	
-	cudaEventSynchronize(stop);
-	float milliseconds = 0;
-	cudaEventElapsedTime(&milliseconds, start, stop);
+    cudaMemcpy(result, d_result, ((NV*NV) * sizeof(float)), cudaMemcpyDeviceToHost);
+    
+    printGraph(result, (NV*NV));
+    
+    cudaFree(d_graph);
+    cudaFree(d_result);
+    cudaFree(d_visited);
 
-	cudaFree(d_in);
+    free(graph);
+    free(result);
 
-	printf("Time used: %f milliseconds\n", milliseconds);
-
+    printf("Time used: %f milliseconds\n", milliseconds);
     return 0;
 }

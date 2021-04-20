@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <time.h>
+#include <sys/time.h>
 
 int minDistance(int V, int dist[], bool sSet[]) {
     int min = INT_MAX, min_index; 
@@ -64,30 +65,14 @@ int main() {
     clock_t t;
 
     int V = 6;                 // number of vertices, edge, and weight of each edge
-    //int E, weight;
-    //scanf("%d %d", &V, &E);
-    int n1, n2;
-
-    int graph[6][6] = { {0, 4, 4, 0, 0, 0},
-                        {4, 0, 2, 0, 0, 0},
-                        {4, 2, 0, 3, 1, 6},
-                        {0, 0, 3, 0, 0, 2},
-                        {0, 0, 1, 0, 0, 3},
-                        {0, 0, 6, 2, 3, 0} };
-
-    //for(int i = 0; i < V; i++) 
-    //    for(int j = 0; j < V; j++) 
-    //        graph[i][j] = 0;
-
-    //for(int i = 0; i < E; i++) {
-    //    scanf("%d %d %d", &n1, &n2, &weight);
-    //    graph[n1][n2] = weight;
-    //    graph[n2][n1] = weight;
-    //}
+    int graph[6][6] = { {0, 3, 60, 3, 16, 17},
+                        {3, 0, 88, 88, 86, 26},
+                        {60, 88, 0, 11, 59, 11},
+                        {3, 88, 11, 0, 22, 51},
+                        {16, 86, 59, 22, 0, 45},
+                        {17, 26, 11, 51, 45, 0} };
 
     int start, end;
-    //printf("Enter starting node: ");
-    //scanf("%d", &start);
     t = clock();
     dijkstraAlgo(V, graph, 0);
 
@@ -102,5 +87,6 @@ int main() {
 
     t = clock() - t;
     printf ("\nIt took me %d clicks (%f seconds).\n",t,((float)t)/CLOCKS_PER_SEC);
+    printf("Time used: %f milliseconds\n", (((float)t)/CLOCKS_PER_SEC)*1000);
     return 0;
 }
