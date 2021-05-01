@@ -1,10 +1,62 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <limits.h>
+#include <time.h>
 
 #define inf 9999
-#define N 5
+#define NV 5
 #define tolerance 0.001
+
+void createGraph(float *arr, int N) {
+    time_t t;                               // used for randomizing values
+    int col; 
+    int row;
+    int maxWeight = 100;                    // limit the weight an edge can have
+
+    srand((unsigned) time(&t));             // generate random
+
+    for (col = 0; col < sqrt(N); col++) { 
+        for(row = 0; row < sqrt(N); row++) {
+            if( col != row){
+                arr[(int)(row*sqrt(N)) + col] = rand() % maxWeight; // assign random
+
+                // have a symmetric graph
+                arr[(int)(col*sqrt(N)) + row] = arr[(int)(row*sqrt(N)) + col];
+            }
+            else
+                arr[(int)(row*sqrt(N)) + col] = 0; // NO LOOPS
+        }
+    }
+}
+
+void printGraph(float *arr, int n) {
+    for (int i = 0; i < n; i++) {
+        for(int j = 0; j < n; j++) {
+            printf("%f   ", arr[i * n + j]);
+        }
+        printf("\n");
+    }
+}
+
+__global__ void floyd0(int n, float* x, int* qx) {
+    int ix = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = ix & (n - 1);
+    float tmp;
+    for(int k = 0; k < n; k++) {
+        tmp = x[ix - j + k] + x[k * n + j];
+        // D[i * n + j] > (D[i * n + k] + D[k * n + j])
+        if(x[ix * n + j] > x[ix * n + k] + x[k * n + j]) {
+            x[ix * n + j] = tmp;
+            qx[ix * n + j] = k;
+        }
+        if(x[ix * n + j] == inf) {
+            qx[ix * n + j] = k;
+        }
+        
+    }
+}
 
 __global__ void floyd(int n, int k, float* x, int* qx) {
     int ix = blockIdx.x * blockDim.x + threadIdx.x;
@@ -33,7 +85,7 @@ void cpu_floyd(int n, float* D, int* Q) {
     for (int k = 0; k < n; k++) {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                if ((D[i * n + k] + D[k * n + j]) < D[i * n + j]) {
+                if (D[i * n + j] > (D[i * n + k] + D[k * n + j])) {
                     D[i * n + j] = D[i * n + k] + D[k * n + j];
                     Q[i * n + j] = k;
                 } 
@@ -61,6 +113,7 @@ void valid(int n, float* D, float* host_D) {
 }
 
 int main(int argc, char **argv) {
+    clock_t t;
     float *host_A, *host_D;
     int *host_Q;
     float *dev_x;
@@ -69,10 +122,10 @@ int main(int argc, char **argv) {
     int *Q;
     
     int i, j, bk;
-    int k = 0;
-    int n = N;
+    //int k = 0;
+    int n = NV;
 
-    cudaEvent_t start,stop;
+    cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
@@ -94,18 +147,11 @@ int main(int argc, char **argv) {
     host_Q = (int *) malloc(n * n * sizeof (int));
 
     // Randomize distances in between each node
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < n; j++) {
-            if (i == j) {
-                A[i * n + j] = 0;
-            } else {
-                A[i * n + j] = 1200 * (float) rand() / RAND_MAX + 1;
-                if (A[i * n + j] > 1000) {
-                    A[i * n + j] = inf;
-                }
-            }
-        }
-    }
+    createGraph(A, (n*n)); 
+
+    // Printing graph
+    printGraph(A, n);
+
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
             Q[i * n + j] = -1;
@@ -134,9 +180,10 @@ int main(int argc, char **argv) {
 
     cudaEventRecord(start); 
 
-    floyd<<<bk, gputhreads>>>(n, k, dev_x, dev_qx);
-    for (k = 1; k < n; k++) 
-        floyd2<<<bk, gputhreads>>>(n, k, dev_x, dev_qx);
+    // floyd<<<bk, gputhreads>>>(n, k, dev_x, dev_qx);
+    // for (k = 1; k < n; k++) 
+    //     floyd2<<<bk, gputhreads>>>(n, k, dev_x, dev_qx);
+    floyd0<<<bk, gputhreads>>>(n, dev_x, dev_qx);
 
     cudaEventRecord(stop);
 
@@ -148,11 +195,15 @@ int main(int argc, char **argv) {
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
 
-    printf("GPU Calculation Time elapsed: %.20f\n", milliseconds * .0001);
+    printf("GPU Calculation Time elapsed: %.20f milliseconds\n", milliseconds);
     printf("\n");
     
     // CPU calculation
+    t = clock();
     cpu_floyd(n, D, Q);
+
+    t = clock() - t;
+    printf("CPU Calculation Time elapsed: %.20f milliseconds\n", (((float)t)/CLOCKS_PER_SEC));
 
     // Check validation of D array from CPU calc and host_D array from GPU calc
     // See if the two arrays match
