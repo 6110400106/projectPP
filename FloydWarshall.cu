@@ -7,6 +7,7 @@
 #define inf 9999                            // the limit of weight in all edges
 #define NV 5                                // number of vertices
 #define tolerance 0.001                     // for the approximate number in deviation from cpu and gpu calc
+#define TILE_WIDTH 32
 
 void createGraph(float *arr, int N) {
     time_t t;                               // used for randomizing values
@@ -39,7 +40,8 @@ void printGraph(float *arr, int n) {
     }
 }
 
-__global__ void gpuFloyd(int n, float* arr) {
+__global__ void gpuFloyd(int n, float* arr, int k) {
+    /*
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     //int j = id & (n - 1);
@@ -54,6 +56,29 @@ __global__ void gpuFloyd(int n, float* arr) {
         }
         __syncthreads();
     }
+    */
+
+    // compute indexes
+    int i = blockIdx.y;
+    int j = blockIdx.x;
+
+    int i0 = i * n + j;
+    int i1 = i * n + k;
+    int i2 = k * n + j;
+
+    // read independent values
+    int i_j_value = arr[i0];
+    int i_k_value = arr[i1];
+    int k_j_value = arr[i2];
+
+    __syncthreads();
+
+    // calculate shortest path
+    int sum = i_k_value + k_j_value;
+    if (sum < i_j_value)
+        arr[i0] = sum;
+        
+    __syncthreads();
 }
 
 void cpuFloyd(int n, float* cpuGraph) {
@@ -141,8 +166,12 @@ int main(int argc, char **argv) {
     printf(" \n");
 
     // Kernel call
+    dim3 dimGrid(n, n, 1);
     cudaEventRecord(start); 
-    gpuFloyd<<<bk, gputhreads>>>(n, devArr);
+    for(int k = 0; k < n; k++) {
+        // gpuFloyd<<<bk, gputhreads>>>(n, devArr, k);
+        gpuFloyd<<<dimGrid, 1>>>(n, devArr, k);
+    }
     cudaEventRecord(stop);
 
     // Second Mem Copy
