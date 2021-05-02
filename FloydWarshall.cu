@@ -58,6 +58,7 @@ __global__ void gpuFloyd(int n, float* arr, int k) {
     }
     */
 
+    /*
     // compute indexes
     int i = blockIdx.y;
     int j = blockIdx.x;
@@ -77,8 +78,33 @@ __global__ void gpuFloyd(int n, float* arr, int k) {
     int sum = i_k_value + k_j_value;
     if (sum < i_j_value)
         arr[i0] = sum;
-        
+
     __syncthreads();
+    */
+
+    int tid = threadIdx.x;
+    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(gid >= n) {
+        return;
+    }
+ 
+    int idx = n * blockIdx.y + gid;
+    __shared__  int shortest_distance;
+
+    if(tid == 0) {
+        shortest_distance = arr[n * blockIdx.y + k];
+    }
+
+    __syncthreads();
+
+    int node_distance = arr[k * n + gid];
+    int total_distance = shortest_distance + node_distance;
+    if (arr[idx] > total_distance){
+       arr[idx] = total_distance;
+    }
+
+    __syncthreads();
+
 }
 
 void cpuFloyd(int n, float* cpuGraph) {
@@ -155,22 +181,23 @@ int main(int argc, char **argv) {
     // For GPU Calculation
     bk = (int) (n * n / 512);
     int gputhreads = 512;
-    if (bk > 0) {
-        gputhreads = 512;
-    } else {
-        bk = 1;
-        gputhreads = n*n;
-    }
+    // if (bk > 0) {
+    //     gputhreads = 512;
+    // } else {
+    //     bk = 1;
+    //     gputhreads = n*n;
+    // }
     printf(" \n");
     printf("BLOCKS :   %d      GPU THREADS:     %d \n", bk, gputhreads);
     printf(" \n");
 
     // Kernel call
-    dim3 dimGrid(n, n, 1);
+    // dim3 dimGrid(n, n, 1);
+    dim3 dimGrid((n + gputhreads - 1) / gputhreads, n);  
     cudaEventRecord(start); 
     for(int k = 0; k < n; k++) {
         // gpuFloyd<<<bk, gputhreads>>>(n, devArr, k);
-        gpuFloyd<<<dimGrid, 1>>>(n, devArr, k);
+        gpuFloyd<<<dimGrid, 512>>>(n, devArr, k);
     }
     cudaEventRecord(stop);
 
