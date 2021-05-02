@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
     dim3 dimGrid((n + gputhreads - 1) / gputhreads, n);  
     cudaEventRecord(start); 
     for(int k = 0; k < n; k++) {
-        gpuFloyd<<<dimGrid, 512>>>(n, devArr, k);
+        gpuFloyd<<<dimGrid, gputhreads>>>(n, devArr, k);
     }
     cudaEventRecord(stop);
 
@@ -163,6 +163,7 @@ int main(int argc, char **argv) {
     // See if the two arrays match
     valid(n, cpuGraph, gpuGraph);
 
+    /*
     printf("Graph from GPU:\n");
     printGraph(gpuGraph, n);
     printf("\n");
@@ -170,6 +171,7 @@ int main(int argc, char **argv) {
     printf("Graph from CPU:\n");
     printGraph(cpuGraph, n);
     printf("\n");
+    */
 
     cudaFree(devArr);
 
