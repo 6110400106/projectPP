@@ -4,10 +4,7 @@
 #include <limits.h>
 #include <time.h>
 
-#define inf 9999                            // the limit of weight in all edges
 #define NV 5                                // number of vertices
-#define tolerance 0.001                     // for the approximate number in deviation from cpu and gpu calc
-#define TILE_WIDTH 32
 
 void createGraph(float *arr, int N) {
     time_t t;                               // used for randomizing values
@@ -41,47 +38,6 @@ void printGraph(float *arr, int n) {
 }
 
 __global__ void gpuFloyd(int n, float* arr, int k) {
-    /*
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    int j = blockIdx.y * blockDim.y + threadIdx.y;
-    //int j = id & (n - 1);
-    __syncthreads();
-    //float tmp;
-    for(int k = 0; k < n; k++) {
-        //tmp = arr[id - j + k] + arr[k * n + j];
-        __syncthreads();
-        // arr[i * n + j] > (arr[i * n + k] + arr[k * n + j])
-        if(arr[id * n + j] > arr[id * n + k] + arr[k * n + j]) {
-            arr[id * n + j] = arr[id * n + k] + arr[k * n + j];
-        }
-        __syncthreads();
-    }
-    */
-
-    /*
-    // compute indexes
-    int i = blockIdx.y;
-    int j = blockIdx.x;
-
-    int i0 = i * n + j;
-    int i1 = i * n + k;
-    int i2 = k * n + j;
-
-    // read independent values
-    int i_j_value = arr[i0];
-    int i_k_value = arr[i1];
-    int k_j_value = arr[i2];
-
-    __syncthreads();
-
-    // calculate shortest path
-    int sum = i_k_value + k_j_value;
-    if (sum < i_j_value)
-        arr[i0] = sum;
-
-    __syncthreads();
-    */
-
     int tid = threadIdx.x;
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
     if(gid >= n) {
@@ -123,15 +79,12 @@ void valid(int n, float* cpuGraph, float* gpuGraph) {
     printf("VALIDATING THAT cpuGraph array from CPU and gpuGraph array from GPU match... \n");
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            // if (abs(cpuGraph[i * n + j] - gpuGraph[i * n + j]) > tolerance) {
-            //     printf("ERROR MISMATCH in array cpuGraph i %d j %d CPU SAYS %f and GPU SAYS %f \n", i, j, cpuGraph[i * n + j], gpuGraph[i * n + j]);
-            // }
             if (cpuGraph[i * n + j] != gpuGraph[i * n + j]) {
                 printf("ERROR MISMATCH in array cpuGraph i %d j %d CPU SAYS %f and GPU SAYS %f \n", i, j, cpuGraph[i * n + j], gpuGraph[i * n + j]);
             }
         }
     }
-    printf("OK \n");
+    printf("OK \n\n");
 }
 
 int main(int argc, char **argv) {
@@ -141,7 +94,6 @@ int main(int argc, char **argv) {
     float *graph, *cpuGraph;
     
     int i, j, bk;
-    //int k = 0;
     int n = NV;
 
     cudaEvent_t start, stop;
@@ -179,24 +131,13 @@ int main(int argc, char **argv) {
     cudaMemcpy(devArr, hostArr, n * n * sizeof (float), cudaMemcpyHostToDevice);
 
     // For GPU Calculation
-    bk = (int) (n * n / 512);
     int gputhreads = 512;
-    // if (bk > 0) {
-    //     gputhreads = 512;
-    // } else {
-    //     bk = 1;
-    //     gputhreads = n*n;
-    // }
-    printf(" \n");
-    printf("BLOCKS :   %d      GPU THREADS:     %d \n", bk, gputhreads);
-    printf(" \n");
 
     // Kernel call
     // dim3 dimGrid(n, n, 1);
     dim3 dimGrid((n + gputhreads - 1) / gputhreads, n);  
     cudaEventRecord(start); 
     for(int k = 0; k < n; k++) {
-        // gpuFloyd<<<bk, gputhreads>>>(n, devArr, k);
         gpuFloyd<<<dimGrid, 512>>>(n, devArr, k);
     }
     cudaEventRecord(stop);
