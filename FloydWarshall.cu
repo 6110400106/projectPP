@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
     createGraph(graph, (n*n)); 
 
     // Printing graph
-    printGraph(graph, n);
+    //printGraph(graph, n);
 
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
@@ -150,7 +150,6 @@ int main(int argc, char **argv) {
     cudaEventElapsedTime(&milliseconds, start, stop);
 
     printf("GPU Calculation Time elapsed: %.20f milliseconds\n", milliseconds);
-    printf("\n");
     
     // CPU calculation
     t = clock();
@@ -180,6 +179,6 @@ int main(int argc, char **argv) {
     free(hostArr);
     free(gpuGraph);
 
-    printf("ALL OK WE ARE DONE \n");
+    printf("FINISHED!!! \n");
     return 0;
 }
