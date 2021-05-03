@@ -76,7 +76,7 @@ void cpuFloyd(int n, float* cpuGraph) {
 }
 
 void valid(int n, float* cpuGraph, float* gpuGraph) {
-    printf("VALIDATING THAT cpuGraph array from CPU and gpuGraph array from GPU match... \n");
+    printf("VALIDATING that cpuGraph array from CPU and gpuGraph array from GPU match... \n");
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             if (cpuGraph[i * n + j] != gpuGraph[i * n + j]) {
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
     float *devArr;
     float *graph, *cpuGraph;
     
-    int i, j, bk;
+    int i, j;
     int n = NV;
 
     cudaEvent_t start, stop;
