@@ -1,8 +1,8 @@
 # Project Parallel Computing with CUDA
 
 สมาชิกกลุ่ม
-1. นายณัฐวรรธน์ สุนทรเสถียรกุล
-2. นายพันธุ์ธิชชัย ขรรค์บริวาร 
+1. นายณัฐวรรธน์ สุนทรเสถียรกุล 611040016
+2. นายพันธุ์ธิชชัย ขรรค์บริวาร 6110406121
 
 ## Floyd Warshall Algorithm
 ![image](https://user-images.githubusercontent.com/48822642/117423584-1387b180-af4b-11eb-94b5-dc3daac657f8.png)
